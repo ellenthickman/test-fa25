@@ -157,7 +157,9 @@ Find the mean population, household income and per capita income grouped by clus
 acs_clust_t$cluster <- km$cluster
 acs_clust_t <- acs_clust_t %>%
   mutate(cluster = km$cluster) %>%
-  left_join(acs_il_t %>% select(NAME, pop, hh_income, income), by = c("pop", "hh_income", "income"))
+  left_join(acs_il_t %>% select(NAME, pop, hh_income, income), by = c("pop", "hh_income", "income")) %>%
+  #remove NAs
+  na.omit()
 acs_clust_t %>%
   group_by(cluster) %>%
   summarise(mean_pop = mean(pop),
@@ -168,9 +170,18 @@ acs_clust_t %>%
 
 As you might have seen earlier, it's not always clear which number of clusters is the optimal choice. To automate K Means clustering, program a function based on `kmeans()` that takes K as an argument. You can fix the other arguments, e.g. such that a specific dataset is always used when calling the function.
 ```{r}
+# kmeans_clustering <- function(k) {
+#   km <- kmeans(acs_clust_t %>% select(pop, hh_income, income), centers = k, nstart = 20)
+#   return(km$cluster)
+# }
 kmeans_clustering <- function(k) {
-  km <- kmeans(acs_clust_t %>% select(pop, hh_income, income), centers = k, nstart = 20)
-  return(km$cluster)
+  df <- acs_il_t %>% 
+    select(pop, hh_income, income) %>%
+    # replace NAs with column means to keep all rows
+    mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+  
+  km <- kmeans(df, centers = k, nstart = 20)
+  km$cluster
 }
 ```
 
